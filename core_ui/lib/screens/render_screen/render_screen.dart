@@ -1,16 +1,24 @@
 import 'package:core_ui/app_colors.dart';
-import 'package:core_ui/widgets/app_button.dart';
+import 'package:core_ui/enums/allowed_actions.dart';
 import 'package:core_ui/widgets/app_custom_paint.dart';
-import 'package:core_ui/widgets/render_controls.dart';
+import 'package:core_ui/widgets/keyboard_service.dart';
 import 'package:data/data.dart';
 import 'package:data/entities/face_entity.dart';
 import 'package:data/matrix/vector_transformation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 
 class RenderScreen extends StatefulWidget {
   final List<FaceEntity> _defaultFaces;
+  final Map<AllowedActions, Vector3> _objectParameters =
+      <AllowedActions, Vector3>{
+    AllowedActions.scaling: Vector3(1, 1, 1),
+    AllowedActions.translation: Vector3(0, 0, 0),
+    AllowedActions.rotation: Vector3(0, 0, 0),
+  };
 
-  const RenderScreen({
+  RenderScreen({
     required List<FaceEntity> defaultFaces,
     super.key,
   }) : _defaultFaces = defaultFaces;
@@ -19,46 +27,64 @@ class RenderScreen extends StatefulWidget {
   _RenderScreenState createState() => _RenderScreenState();
 }
 
-class _RenderScreenState extends State<RenderScreen> {
-  Vector3 _position = Vector3(0, 0, 0);
-  Vector3 _scale = Vector3(1, 1, 1);
-  Vector3 _rotation = Vector3(0, 0, 0);
-  Size _painterSize = Size.zero;
+class _RenderScreenState extends State<RenderScreen>
+    with TickerProviderStateMixin {
+  late Ticker _currTicker;
 
   @override
   Widget build(BuildContext context) {
+    Size size = MediaQuery.sizeOf(context);
+
     return Container(
       color: AppColors.backGroundColor,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: <Widget>[
-          AppCustomPaint(
-            entities: _fetchVectors(
-              _painterSize,
-              widget._defaultFaces,
-            ),
-            setSize: _setSize,
-          ),
-          RenderControls(
-            scaleHandler: _scaleHandler,
-            translationHandler: _translationHandler,
-            rotationHandler: _rotationHandler,
-            scale: _scale,
-            position: _position,
-            rotation: _rotation,
-          ),
-          AppButton(
-            text: 'Back to picking',
-            handler: Navigator.of(context).pop,
-          ),
-        ],
+      child: AppCustomPaint(
+        entities: _fetchVectors(
+          size,
+          widget._defaultFaces,
+        ),
       ),
     );
   }
 
-  void _setSize(Size size) {
-    _painterSize = size;
-    setState(() {});
+  @override
+  void initState() {
+    super.initState();
+    ServicesBinding.instance.keyboard.addHandler(_onKey);
+  }
+
+  @override
+  void dispose() {
+    ServicesBinding.instance.keyboard.removeHandler(_onKey);
+    super.dispose();
+  }
+
+  void _createTicker(LogicalKeyboardKey key) {
+    _currTicker = createTicker(
+      (_) {
+        KeyboardService.keyHandler(key, widget._objectParameters);
+        setState(() {});
+      },
+    )..start();
+  }
+
+  void _disposeTicker() {
+    _currTicker.stop();
+    _currTicker.dispose();
+  }
+
+  bool _onKey(KeyEvent event) {
+    if (event is KeyDownEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.escape) {
+        Navigator.of(context).pop();
+        return true;
+      }
+      _createTicker(event.logicalKey);
+    }
+    if (event is KeyUpEvent) {
+      _disposeTicker();
+    }
+
+    return true;
   }
 
   Map<int, List<Vector4>> _fetchVectors(
@@ -72,9 +98,9 @@ class _RenderScreenState extends State<RenderScreen> {
         {
           i: VectorTransformation.transform(
             vertices: entities[i].vertices,
-            translate: _position,
-            scale: _scale,
-            rotation: _rotation,
+            translate: widget._objectParameters[AllowedActions.translation]!,
+            scale: widget._objectParameters[AllowedActions.scaling]!,
+            rotation: widget._objectParameters[AllowedActions.rotation]!,
             size: size,
           ),
         },
@@ -82,28 +108,5 @@ class _RenderScreenState extends State<RenderScreen> {
     }
 
     return result;
-  }
-
-  void _scaleHandler(double value) {
-    _scale = Vector3.all(value);
-    setState(() {});
-  }
-
-  void _translationHandler({double? xValue, double? yValue, double? zValue}) {
-    _position = Vector3(
-      xValue ?? _position.x,
-      yValue ?? _position.y,
-      zValue ?? _position.z,
-    );
-    setState(() {});
-  }
-
-  void _rotationHandler({double? xValue, double? yValue, double? zValue}) {
-    _rotation = Vector3(
-      xValue ?? _rotation.x,
-      yValue ?? _rotation.y,
-      zValue ?? _rotation.z,
-    );
-    setState(() {});
   }
 }

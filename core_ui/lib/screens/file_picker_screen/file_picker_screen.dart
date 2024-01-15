@@ -34,18 +34,49 @@ class FilePickerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     NavigatorState navigatorState = Navigator.of(context);
+    Size size = MediaQuery.sizeOf(context);
 
-    return SizedBox(
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.backGroundColor,
+    return Stack(
+      children: <Widget>[
+        SizedBox(
+          width: size.width,
+          height: size.height,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.backGroundColor,
+            ),
+            onPressed: () => _tapHandler(navigatorState),
+            child: const Text(
+              'Tap to select .obj file',
+              style: appTextStyle,
+            ),
+          ),
         ),
-        onPressed: () => _tapHandler(navigatorState),
-        child: const Text(
-          'Tap to select .obj file',
-          style: appTextStyle,
+        Padding(
+          padding: EdgeInsets.all(size.width / 25),
+          child: Text(
+            'Esc - exit from render screen\n\n'
+            'SCALING\n\n'
+            'ArrowUp - scale plus\n'
+            'ArrowDown - scale minus\n\n'
+            'ROTATION\n\n'
+            'F - rotate by X (plus)\n'
+            'H - rotate by X (minus)\n'
+            'T - rotate by Y (plus)\n'
+            'G - rotate by Y (minus)\n'
+            'R - rotate by Z (plus)\n'
+            'Y - rotate by Z (minus)\n\n'
+            'TRANSLATION\n\n'
+            'A - translate by X (plus)\n'
+            'D - translate by X (minus)\n'
+            'W - translate by Y (plus)\n'
+            'S - translate by Y (minus)\n'
+            'Q - translate by Z (plus)\n'
+            'E - translate by Z (minus)\n',
+            style: appTextStyle.copyWith(fontSize: 20),
+          ),
         ),
-      ),
+      ],
     );
   }
 }
